@@ -94,6 +94,59 @@ scp_to_remote() {
     scp -o StrictHostKeyChecking=no "$local_file" "$TAPE_HOST:$remote_file"
 }
 
+tar_exists_on_remote() {
+    local tar_name="$1"
+    ssh_pass "test -f '$TAPE_PATH/$tar_name'" 2>/dev/null
+}
+
+get_remote_file_size() {
+    local tar_name="$1"
+    ssh_pass "stat -c%s '$TAPE_PATH/$tar_name'" 2>/dev/null || echo 0
+}
+
+delete_remote_tar() {
+    local tar_name="$1"
+    ssh_pass "rm -f '$TAPE_PATH/$tar_name'"
+}
+
+get_manifest_size() {
+    local tar_name="$1"
+    local size
+    size=$(jq -r --arg tar "$tar_name" '.archive_sets[] | select(.tarfile == $tar) | .size_bytes' "$MANIFEST_LOCAL" 2>/dev/null || echo 0)
+    echo "$size"
+}
+
+should_skip_tar() {
+    local tar_name="$1"
+
+    if [[ ! -f "$MANIFEST_LOCAL" ]]; then
+        return 1
+    fi
+
+    if ! tar_exists_on_remote "$tar_name"; then
+        return 1
+    fi
+
+    local expected_size
+    expected_size=$(get_manifest_size "$tar_name")
+
+    if [[ "$expected_size" == "0" ]] || [[ -z "$expected_size" ]]; then
+        return 1
+    fi
+
+    local remote_size
+    remote_size=$(get_remote_file_size "$tar_name")
+
+    if [[ "$remote_size" -eq "$expected_size" ]]; then
+        log "INFO" "Skipping completed: $tar_name ($remote_size bytes)"
+        return 0
+    else
+        log "INFO" "Size mismatch ($remote_size vs $expected_size bytes), re-creating: $tar_name"
+        delete_remote_tar "$tar_name"
+        return 1
+    fi
+}
+
 calculate_checksum() {
     local file="$1"
     sha256sum "$file" | awk '{print $1}'
@@ -323,6 +376,14 @@ main() {
 
         local tar_name
         printf -v tar_name "archive_%03d.tar" "$tar_index"
+
+        if [[ "$DRY_RUN" != true ]] && should_skip_tar "$tar_name"; then
+            local skip_size
+            skip_size=$(get_remote_file_size "$tar_name")
+            update_manifest "$tar_name" "$group_dirs" "$skip_size" "skipped"
+            ((tar_index++))
+            continue
+        fi
 
         local tar_result
         tar_result=$(create_tar_over_ssh "$group_dirs" "$tar_name" "$SOURCE_ROOT" "$TAPE_PATH")

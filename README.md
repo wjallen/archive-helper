@@ -263,7 +263,7 @@ Log format: `[YYYY-MM-DD HH:MM:SS] [LEVEL] message`
 
 ## Notes
 
-- The archive process does not support resume. If interrupted, restart from the beginning.
+- **Resume Support**: If interrupted, re-running will skip completed tars (matched by file size vs manifest) and recreate mismatched ones.
 - Directory structure is preserved at the top levels. Each tar file contains the original subdirectory names.
 - Tar files are named `archive_001.tar`, `archive_002.tar`, etc.
 - The manifest is stored both locally and on the tape system for redundancy.
