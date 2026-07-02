@@ -14,7 +14,7 @@ Shell script suite for archiving large directory structures to tape via SSH. No 
 - **Auth**: SSH keys (recommended) or interactive SSH password/MFA prompt
 - **No sshpass/bc**: Scripts use pure bash arithmetic and plain `ssh`/`scp`
 - **Manifest**: JSON at `manifest.json`, stored locally and on tape
-- **No resume**: Interrupted archives must restart from scratch
+- **Resume**: Skips completed tars if size matches manifest; recreates mismatched ones
 
 ## Requirements
 - Bash 4.0+, ssh, tar, jq, sha256sum
