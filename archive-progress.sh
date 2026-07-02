@@ -19,8 +19,8 @@ Options:
   --help                  Show this help message
 
 Examples:
-  archive-progress.sh --tape-host admin@tape.example.com --tape-path /mnt/tape/archive
-  archive-progress.sh --tape-host admin@tape.example.com --tape-path /mnt/tape/archive --list --size
+  archive-progress.sh --tape-host admin@ranch.tacc.utexas.edu --tape-path /mnt/tape/archive
+  archive-progress.sh --tape-host admin@ranch.tacc.utexas.edu --tape-path /mnt/tape/archive --list --size
 ENDOFUSAGE
     exit "${1:-0}"
 }
@@ -34,21 +34,13 @@ log() {
 
 ssh_cmd() {
     local cmd="$1"
-    if [[ -n "${SSH_PASSWORD:-}" ]]; then
-        sshpass -p "$SSH_PASSWORD" ssh -o StrictHostKeyChecking=no "$TAPE_HOST" "$cmd"
-    else
-        sshpass -d 0 ssh -o StrictHostKeyChecking=no "$TAPE_HOST" "$cmd"
-    fi
+    ssh -o StrictHostKeyChecking=no "$TAPE_HOST" "$cmd"
 }
 
 scp_from_remote() {
     local remote_file="$1"
     local local_file="$2"
-    if [[ -n "${SSH_PASSWORD:-}" ]]; then
-        sshpass -p "$SSH_PASSWORD" scp -o StrictHostKeyChecking=no "$TAPE_HOST:$remote_file" "$local_file"
-    else
-        sshpass -d 0 scp -o StrictHostKeyChecking=no "$TAPE_HOST:$remote_file" "$local_file"
-    fi
+    scp -o StrictHostKeyChecking=no "$TAPE_HOST:$remote_file" "$local_file"
 }
 
 list_tar_files() {

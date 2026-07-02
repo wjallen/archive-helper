@@ -17,27 +17,27 @@ A shell script suite for archiving large directory structures to a tape system v
 # Archive data
 ./archive.sh \
   --source /data \
-  --tape-host admin@tape.example.com \
+  --tape-host admin@ranch.tacc.utexas.edu \
   --tape-path /mnt/tape/archive \
   --min-size 100GB \
   --max-size 1TB
 
 # Check progress
 ./archive-progress.sh \
-  --tape-host admin@tape.example.com \
+  --tape-host admin@ranch.tacc.utexas.edu \
   --tape-path /mnt/tape/archive
 
 # Verify archives
 ./archive-verify.sh \
   --manifest manifest.json \
-  --tape-host admin@tape.example.com \
+  --tape-host admin@ranch.tacc.utexas.edu \
   --tape-path /mnt/tape/archive \
   --checksum
 
 # Restore all data
 ./archive-restore.sh \
   --manifest manifest.json \
-  --tape-host admin@tape.example.com \
+  --tape-host admin@ranch.tacc.utexas.edu \
   --tape-path /mnt/tape/archive \
   --destination /restore/path \
   --all
@@ -81,7 +81,7 @@ Size can be specified with units:
 ```bash
 ./archive.sh \
   --source /mnt/data \
-  --tape-host backup@tape-server.example.com \
+  --tape-host admin@ranch.tacc.utexas.edu \
   --tape-path /mnt/tape/backups/2026-07-02 \
   --min-size 100GB \
   --max-size 1TB \
@@ -115,14 +115,14 @@ Verifies the integrity of archived tar files.
 # Verify all archives with checksums
 ./archive-verify.sh \
   --manifest manifest.json \
-  --tape-host admin@tape.example.com \
+  --tape-host admin@ranch.tacc.utexas.edu \
   --tape-path /mnt/tape/archive \
   --checksum
 
 # Verify a specific tar file
 ./archive-verify.sh \
   --manifest manifest.json \
-  --tape-host admin@tape.example.com \
+  --tape-host admin@ranch.tacc.utexas.edu \
   --tape-path /mnt/tape/archive \
   --tar archive_001.tar
 ```
@@ -151,7 +151,7 @@ Restores data from tape archives to a local filesystem.
 # Restore all archives
 ./archive-restore.sh \
   --manifest manifest.json \
-  --tape-host admin@tape.example.com \
+  --tape-host admin@ranch.tacc.utexas.edu \
   --tape-path /mnt/tape/archive \
   --destination /data/restore \
   --all
@@ -159,7 +159,7 @@ Restores data from tape archives to a local filesystem.
 # Restore a specific tar file
 ./archive-restore.sh \
   --manifest manifest.json \
-  --tape-host admin@tape.example.com \
+  --tape-host admin@ranch.tacc.utexas.edu \
   --tape-path /mnt/tape/archive \
   --destination /data/restore \
   --tar archive_001.tar
@@ -167,7 +167,7 @@ Restores data from tape archives to a local filesystem.
 # Restore specific paths from a tar file
 ./archive-restore.sh \
   --manifest manifest.json \
-  --tape-host admin@tape.example.com \
+  --tape-host admin@ranch.tacc.utexas.edu \
   --tape-path /mnt/tape/archive \
   --destination /data/restore \
   --tar archive_001.tar \
@@ -193,24 +193,30 @@ Checks the status of archives on the tape system.
 
 ```bash
 ./archive-progress.sh \
-  --tape-host admin@tape.example.com \
+  --tape-host admin@ranch.tacc.utexas.edu \
   --tape-path /mnt/tape/archive \
   --list --manifest --size
 ```
 
 ## Authentication
 
-The scripts support SSH authentication via:
+The scripts use standard SSH for authentication. Configure one of the following:
 
-1. **SSH Keys**: If passwordless SSH keys are configured, the scripts will work without additional setup
-2. **Interactive Password/MFA**: When run from a terminal, the scripts will prompt for your SSH password and MFA token if needed. No environment variables required.
-3. **Password via Environment Variable**: Set `SSH_PASSWORD` to skip the interactive prompt:
+1. **SSH Keys (Recommended)**: Set up SSH key-based authentication with `ssh-agent`. This allows passwordless operation after initial key setup.
+
    ```bash
-   export SSH_PASSWORD='your-password'
-   ./archive.sh ...
+   # Generate SSH key (if needed)
+   ssh-keygen -t ed25519 -C "your_email@example.com"
+
+   # Add to ssh-agent
+   eval "$(ssh-agent -s)"
+   ssh-add ~/.ssh/id_ed25519
+
+   # Copy public key to tape system
+   ssh-copy-id admin@ranch.tacc.utexas.edu
    ```
 
-**Note**: `sshpass` is required for both interactive prompts and env var authentication.
+2. **Interactive Password/MFA**: If SSH keys are not configured, SSH will prompt interactively for your password and MFA token when you run the scripts from a terminal.
 
 ## Manifest Format
 
@@ -221,14 +227,14 @@ The manifest (`manifest.json`) contains metadata about the archive:
   "version": "1.0",
   "created": "2026-07-02T10:30:00Z",
   "source_root": "/data",
-  "tape_host": "admin@tape.example.com",
+  "tape_host": "admin@ranch.tacc.utexas.edu",
   "tape_path": "/mnt/tape/archive",
   "archive_sets": [
     {
       "tarfile": "archive_001.tar",
       "source_paths": "project_a,project_b,project_c",
       "size_bytes": 847000000000,
-      "size_gb": 847.0,
+      "size_gb": 847,
       "checksum": "sha256:abc123...",
       "timestamp": "2026-07-02T10:30:00Z"
     }
@@ -251,10 +257,8 @@ Log format: `[YYYY-MM-DD HH:MM:SS] [LEVEL] message`
 
 - Bash 4.0+
 - `ssh` (OpenSSH)
-- `sshpass` (required for SSH authentication - handles password/MFA prompts)
 - `tar` (GNU tar recommended)
 - `jq` (for JSON processing)
-- `bc` (for size calculations)
 - `sha256sum` (for checksums)
 
 ## Notes

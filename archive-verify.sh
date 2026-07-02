@@ -21,9 +21,9 @@ Options:
   --help                  Show this help message
 
 Examples:
-  $(basename "$0") --manifest manifest.json --tape-host admin@tape.example.com --tape-path /mnt/tape/archive
-  $(basename "$0") --manifest manifest.json --tape-host admin@tape.example.com --tape-path /mnt/tape/archive --tar archive_001.tar
-  $(basename "$0") --manifest manifest.json --tape-host admin@tape.example.com --tape-path /mnt/tape/archive --checksum
+  $(basename "$0") --manifest manifest.json --tape-host admin@ranch.tacc.utexas.edu --tape-path /mnt/tape/archive
+  $(basename "$0") --manifest manifest.json --tape-host admin@ranch.tacc.utexas.edu --tape-path /mnt/tape/archive --tar archive_001.tar
+  $(basename "$0") --manifest manifest.json --tape-host admin@ranch.tacc.utexas.edu --tape-path /mnt/tape/archive --checksum
 EOF
     exit "${1:-0}"
 }
@@ -37,21 +37,13 @@ log() {
 
 ssh_pass() {
     local cmd="$1"
-    if [[ -n "${SSH_PASSWORD:-}" ]]; then
-        sshpass -p "$SSH_PASSWORD" ssh -o StrictHostKeyChecking=no "$TAPE_HOST" "$cmd"
-    else
-        sshpass -d 0 ssh -o StrictHostKeyChecking=no "$TAPE_HOST" "$cmd"
-    fi
+    ssh -o StrictHostKeyChecking=no "$TAPE_HOST" "$cmd"
 }
 
 scp_from_remote() {
     local remote_file="$1"
     local local_file="$2"
-    if [[ -n "${SSH_PASSWORD:-}" ]]; then
-        sshpass -p "$SSH_PASSWORD" scp -o StrictHostKeyChecking=no "$TAPE_HOST:$remote_file" "$local_file"
-    else
-        sshpass -d 0 scp -o StrictHostKeyChecking=no "$TAPE_HOST:$remote_file" "$local_file"
-    fi
+    scp -o StrictHostKeyChecking=no "$TAPE_HOST:$remote_file" "$local_file"
 }
 
 calculate_checksum() {

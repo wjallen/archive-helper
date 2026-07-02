@@ -26,8 +26,8 @@ Options:
   --help                  Show this help message
 
 Examples:
-  $(basename "$0") --source /data --tape-host admin@tape.example.com --tape-path /mnt/tape/archive --min-size 100GB --max-size 1TB
-  $(basename "$0") --source /data --tape-host admin@tape.example.com --tape-path /mnt/tape/archive --min-size 100GB --max-size 1TB --threads 4 --dry-run
+  $(basename "$0") --source /data --tape-host admin@ranch.tacc.utexas.edu --tape-path /mnt/tape/archive --min-size 100GB --max-size 1TB
+  $(basename "$0") --source /data --tape-host admin@ranch.tacc.utexas.edu --tape-path /mnt/tape/archive --min-size 100GB --max-size 1TB --threads 4 --dry-run
 EOF
     exit "${1:-0}"
 }
@@ -42,24 +42,25 @@ log() {
 parse_size() {
     local size="$1"
     local value unit
-    value=$(echo "$size" | sed 's/[A-Za-z]//g')
-    unit=$(echo "$size" | sed 's/[0-9.]//g' | tr '[:lower:]' '[:upper:]')
+    value="${size//[A-Za-z]/}"
+    unit="${size//[0-9.]/}"
+    unit=$(echo "$unit" | tr '[:lower:]' '[:upper:]')
 
     case "$unit" in
         TB|T)
-            echo "$value * 1000 * 1000 * 1000 * 1000" | bc
+            echo $((value * 1000 * 1000 * 1000 * 1000))
             ;;
         GB|G)
-            echo "$value * 1000 * 1000 * 1000" | bc
+            echo $((value * 1000 * 1000 * 1000))
             ;;
         MB|M)
-            echo "$value * 1000 * 1000" | bc
+            echo $((value * 1000 * 1000))
             ;;
         KB|K)
-            echo "$value * 1000" | bc
+            echo $((value * 1000))
             ;;
         B|"")
-            echo "$value" | bc
+            echo "$value"
             ;;
         *)
             log "ERROR" "Unknown size unit: $unit"
@@ -79,11 +80,7 @@ ssh_cmd() {
 
 ssh_pass() {
     local cmd="$1"
-    if [[ -n "${SSH_PASSWORD:-}" ]]; then
-        sshpass -p "$SSH_PASSWORD" ssh -o StrictHostKeyChecking=no "$TAPE_HOST" "$cmd"
-    else
-        sshpass -d 0 ssh -o StrictHostKeyChecking=no "$TAPE_HOST" "$cmd"
-    fi
+    ssh -o StrictHostKeyChecking=no "$TAPE_HOST" "$cmd"
 }
 
 ssh_pass_mkdir() {
@@ -94,11 +91,7 @@ ssh_pass_mkdir() {
 scp_to_remote() {
     local local_file="$1"
     local remote_file="$2"
-    if [[ -n "${SSH_PASSWORD:-}" ]]; then
-        sshpass -p "$SSH_PASSWORD" scp -o StrictHostKeyChecking=no "$local_file" "$TAPE_HOST:$remote_file"
-    else
-        sshpass -d 0 scp -o StrictHostKeyChecking=no "$local_file" "$TAPE_HOST:$remote_file"
-    fi
+    scp -o StrictHostKeyChecking=no "$local_file" "$TAPE_HOST:$remote_file"
 }
 
 calculate_checksum() {
@@ -210,7 +203,7 @@ update_manifest() {
     local checksum="$4"
 
     local size_gb
-    size_gb=$(echo "scale=2; $size_bytes / 1000 / 1000 / 1000" | bc)
+    size_gb=$((size_bytes / 1000 / 1000 / 1000))
 
     local timestamp
     timestamp=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
